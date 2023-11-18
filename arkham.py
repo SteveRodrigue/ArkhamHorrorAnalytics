@@ -259,9 +259,9 @@ def worker_inv_aff():
                     str(round(value*100/max_value, 1)) + '%]\n'
         print(txt_output)
         write_to_file(txt_output, TEXT_PATH + 'inv_aff_' +
-                      card_cache[inv]['code'] + '.txt')
+                      card_cache[inv]['name'].replace(" ", "_") + '.txt')
         write_to_file(html_output, HTML_PATH + 'inv_aff_' +
-                      card_cache[inv]['code'] + '.html')
+                      card_cache[inv]['name'].replace(" ", "_") + '.html')
 
 
 def worker_inv_aff_xp():
@@ -275,14 +275,14 @@ def worker_inv_aff_xp():
         get_card(inv)
         # Create the header of the file
         txt_output = '\n==== Investigator ' + card_cache[inv]['name'] \
-            + ' ====\n\n'
+            + ' (XP cards) ====\n\n'
         html_output = " \
 <!doctype html>\n \
 <html>\n \
 <head>\n \
 <title>" + card_cache[inv]['name'] + "</title>\n \
 <meta name=\"description\" content=\"Investigator " \
-+ card_cache[inv]['name'] + " card affinity\">\n \
++ card_cache[inv]['name'] + " XP card affinity\">\n \
 <meta name=\"keywords\" content=\"arkham horror card game\">\n \
 </head>\n \
 <body>\n \
@@ -297,23 +297,25 @@ def worker_inv_aff_xp():
                 html_output = html_output + "Stats based on " + \
                     str(max_value) + " decks<br />\n"
             # Only keep the cards that are used in more than 10% of the decks
-            if value > (max_value * RELEVANCE):
-                html_output = html_output + \
-                    "<img " + "src=\"https://arkhamdb.com/bundles/cards/" \
-                    + str(code) + ".png\" />\n"
-                # Without card ID
-                # txt_output = txt_output + card_cache[code]['name'] + ' [' + \
-                #     str(value) + ', ' + str(round(value*100/max_value, 1)) \
-                #     + '%]\n'
-                # With card ID
-                txt_output = txt_output + get_card(code).get('name') + ' (' \
-                    + str(code) + ') [' + str(value) + ', ' + \
-                    str(round(value*100/max_value, 1)) + '%]\n'
+            if 'xp' in card_cache[code].keys():
+                if card_cache[code]['xp'] > 0:
+                    if value > (max_value * RELEVANCE / 2):
+                        html_output = html_output + \
+                            "<img " + "src=\"https://arkhamdb.com/bundles/cards/" \
+                            + str(code) + ".png\" />\n"
+                        # Without card ID
+                        # txt_output = txt_output + card_cache[code]['name'] + ' [' + \
+                        #     str(value) + ', ' + str(round(value*100/max_value, 1)) \
+                        #     + '%]\n'
+                        # With card ID
+                        txt_output = txt_output + get_card(code).get('name') + ' (' \
+                            + str(code) + ') [' + str(value) + ', ' + \
+                            str(round(value*100/max_value, 1)) + '%]\n'
         print(txt_output)
         write_to_file(txt_output, TEXT_PATH + 'inv_aff_' +
-                      card_cache[inv]['code'] + '_xp.txt')
+                      card_cache[inv]['name'].replace(" ", "_") + '_xp.txt')
         write_to_file(html_output, HTML_PATH + 'inv_aff_' +
-                      card_cache[inv]['code'] + '_xp.html')
+                      card_cache[inv]['name'].replace(" ", "_") + '_xp.html')
 
 
 def process_base_deck(deck_data):
