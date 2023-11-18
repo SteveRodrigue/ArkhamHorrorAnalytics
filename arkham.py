@@ -18,11 +18,14 @@ import re
 NB_THREAD = 4
 # Location of the root directory of ArkhamDB API cache
 DB_PATH = '/home/leko/projects/arkham/db/'
+# DB_PATH = 'db/'
 DECKS_PATH = DB_PATH + 'decks/'             # Location of the decks cache
 CARDS_PATH = DB_PATH + 'cards/'             # Location of the decks cache
 HTML_PATH = 'html/'
 TEXT_PATH = 'text/'
 ARKHAM_DB_API = 'https://arkhamdb.com/api/public/'
+# To be relevand, a card must be present in at leadt 10% of the decks.
+# NOTE: This can skew data for newer cards/expansions.
 RELEVANCE = 0.10
 queue = Queue()                 # Init the empty queue
 queue_inv_aff = Queue()         # Init an empty queue for affinities
@@ -110,10 +113,10 @@ def deck_deduplicate(slots):
 
 def filter_out_cards(slots):
     # @todo: Add cleaning/filtering of decks before processing
-    #        - remove non player cards
-    #        - basic random weakness card
+    #        - remove non player cards (Partial!)
+    #        - basic random weakness card (DONE!)
     #        - basic weakness
-    #        - scenario cards
+    #        - scenario cards (Partial!)
     """Filter out useless cards..."""
     output_slots = {}
     for slot in slots:
@@ -167,6 +170,8 @@ def worker():
         deck_hash = hashlib.md5(pickle.dumps(deck_slots)).hexdigest()
         # Compare original deck to deduplicated
         if dedup_hash != deck_hash:
+            # Display a message when cards we replaced in a deck
+            # after depulication
             print('Cards in deck ' + deck +
                   ' were replaced by their original card ID.')
             deck_hash = dedup_hash
@@ -176,6 +181,7 @@ def worker():
         del dedup_slots
         # The same deck exists...
         if deck_hash in decks_grouped_by_hash:
+            # Diplay a message with duplicated deck IDs
             print('Deck ' + str(content['id']) + ' is identical to: ' +
                   str(decks_grouped_by_hash[deck_hash]))
             # Build data for duplicated decks...
@@ -301,16 +307,12 @@ def worker_inv_aff_xp():
                 if card_cache[code]['xp'] > 0:
                     if value > (max_value * RELEVANCE / 2):
                         html_output = html_output + \
-                            "<img " + "src=\"https://arkhamdb.com/bundles/cards/" \
-                            + str(code) + ".png\" />\n"
-                        # Without card ID
-                        # txt_output = txt_output + card_cache[code]['name'] + ' [' + \
-                        #     str(value) + ', ' + str(round(value*100/max_value, 1)) \
-                        #     + '%]\n'
-                        # With card ID
-                        txt_output = txt_output + get_card(code).get('name') + ' (' \
-                            + str(code) + ') [' + str(value) + ', ' + \
-                            str(round(value*100/max_value, 1)) + '%]\n'
+                            "<img " + "src=\"https://arkhamdb.com/" \
+                            + "bundles/cards/" + str(code) + ".png\" />\n"
+                        # Display With the ArkhamDB card ID
+                        txt_output = txt_output + get_card(code).get('name') \
+                            + ' (' + str(code) + ') [' + str(value) + ', ' \
+                            + str(round(value*100/max_value, 1)) + '%]\n'
         print(txt_output)
         write_to_file(txt_output, TEXT_PATH + 'inv_aff_' +
                       card_cache[inv]['name'].replace(" ", "_") + '_xp.txt')
