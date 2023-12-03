@@ -1,0 +1,22 @@
+
+==== Investigator Rex Murphy (XP cards) ====
+
+Higher Education (02187) [372, 59.3%]
+Pathfinder (02108) [344, 54.9%]
+Magnifying Glass (01040) [304, 48.5%]
+Deduction (02150) [225, 35.9%]
+Charisma (02158) [177, 28.2%]
+Strange Solution (02263) [141, 22.5%]
+Disc of Itzamna (01041) [123, 19.6%]
+Cryptic Research (01043) [110, 17.5%]
+In the Know (03027) [105, 16.7%]
+Encyclopedia (01042) [102, 16.3%]
+Bulletproof Vest (01094) [67, 10.7%]
+Emergency Cache (02194) [61, 9.7%]
+Shortcut (03232) [59, 9.4%]
+Forewarned (03150) [53, 8.5%]
+Death • XIII (05027) [53, 8.5%]
+Deciphered Reality (02303) [49, 7.8%]
+Strange Solution (02262) [43, 6.9%]
+Studious (05276) [41, 6.5%]
+No Stone Unturned (03307) [35, 5.6%]
