@@ -60,6 +60,10 @@ There are very obvious cards and the data is skew around older investigators and
 ## Known issues
 
 - There's surely bugs.
-- Not a lot of feature.
-- Sub-optimal code in many places.
+- Not a lot of features.
+- Sub-optimal Python code.
 - When a deck is deleted, the script always tries to fetch it (Example: deck id 8).
+
+## Side Notes
+
+The current version of the script, with everything in cache (not initial run) will take less than 15 minutes.
