@@ -56,6 +56,8 @@ There are very obvious cards and the data is skew around older investigators and
 - Improve/optimize Python code by myself or with the help of the community.
 - Improve the card parsing to remove any spoiler cards (reject Campaign/Scenario specific cards).
 - Generating text and html file for cards affinity.
+- Remove illegal decks (Some illegal decks are present in ArkhamDB, this can skew the data).
+- Create a new output file will generic stats like how many decks and how long it took to run the script.
 
 ## Known issues
 
