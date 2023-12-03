@@ -52,7 +52,7 @@ def arkhamdb_cache(oper, uid):
         return card_cache.get(str(uid))
     # We try to open the file...
     try:
-        with open(DB_PATH + oper + str(uid) + '.json',
+        with open(DB_PATH + oper + '/' + str(uid) + '.json',
                   encoding="utf-8") as file:
             json_to_return = json.load(file)
     # If it's not working...
