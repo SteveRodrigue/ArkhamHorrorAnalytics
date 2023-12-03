@@ -1,0 +1,22 @@
+
+==== Investigator Wilson Richards ====
+
+Machete (01020) [1, 100.0%]
+Vicious Blow (01025) [1, 100.0%]
+Flashlight (01087) [1, 100.0%]
+Emergency Cache (01088) [1, 100.0%]
+Perception (01090) [1, 100.0%]
+Overpower (01091) [1, 100.0%]
+Lantern (03036) [1, 100.0%]
+Fingerprint Kit (05024) [1, 100.0%]
+Hallowed Mirror (05313) [1, 100.0%]
+Daring (06111) [1, 100.0%]
+Tetsuo Mori (06155) [1, 100.0%]
+Jury-Rig (08074) [1, 100.0%]
+Sledgehammer (08094) [1, 100.0%]
+"I'll take that!" (09067) [1, 100.0%]
+Ad Hoc (10002) [1, 100.0%]
+Hasty Repairs (10003) [1, 100.0%]
+Tinker (10028) [1, 100.0%]
+Pitchfork (10110) [1, 100.0%]
+Pushed to the Limit (10113) [1, 100.0%]
