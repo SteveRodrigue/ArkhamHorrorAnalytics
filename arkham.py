@@ -138,8 +138,11 @@ def fill_queue(filler_list):
 
 def deck_deduplicate(slots):
     """Replace duplicate card ID with their original ID"""
+    # Not sure how to properly fix references to global variables
+    global duplicates
     dedup_dict = {}
     for slot in slots:
+        # Why Linting fails on the following line... I don't know!
         if slot in duplicates:
             dedup_dict.update({duplicates[slot]: slots[slot]})
         else:
@@ -184,6 +187,7 @@ def deck_level(deck_data):
 
 def worker():
     """Main worker function"""
+    # Not sure how to properly fix references to global variables
     global valid_decks
     # We process a queue...
     while not queue.empty():
@@ -439,16 +443,16 @@ if __name__ == "__main__":
     # Start time for statistics only
     start_time = datetime.now()
     print('Arkham Horror Analytics')
-    
+
     # Load duplicate cards list
     # @todo: Dynamically build it?
     duplicates = file_to_json(DB_PATH + 'other/duplicates.json')
-    
+
     list_of_deck = list(range(1, LAST_DECK))
-    
+
     # Fill the queue with the deck list
     fill_queue(list_of_deck)
-    
+
     #
     # Create threads that will execute workers
     # This worker builds the generic stats
@@ -456,69 +460,69 @@ if __name__ == "__main__":
     for t in range(NB_THREAD):
         thread = threading.Thread(target=worker)
         thread_list.append(thread)
-    
+
     # Start threads
     for thread in thread_list:
         thread.start()
-    
+
     # Make sure all threads are done
     for thread in thread_list:
         thread.join()
-    
+
     #
     # Based on the raw stats execute workers
     # Per investigators stats/data.
     #
     for item in affinity_investigators:
         queue_inv_aff.put(item)
-    
+
     for t in range(NB_THREAD):
         thread_aff = threading.Thread(target=worker_inv_aff)
         thread_aff_list.append(thread_aff)
-    
+
     # Start threads
     for thread in thread_aff_list:
         thread.start()
-    
+
     # Make sure all threads are done
     for thread in thread_aff_list:
         thread.join()
-    
+
     #
     # Based on the raw stats execute workers
     # Per investigators stats/data.
     #
     for item in affinity_investigators_xp:
         queue_inv_aff.put(item)
-    
+
     for t in range(NB_THREAD):
         thread_aff_xp = threading.Thread(target=worker_inv_aff_xp)
         thread_aff_list_xp.append(thread_aff_xp)
-    
+
     # Start threads
     for thread in thread_aff_list_xp:
         thread.start()
-    
+
     # Make sure all threads are done
     for thread in thread_aff_list_xp:
         thread.join()
-    
+
     #
     # Post processing...
     #
-    
+
     json_to_file(dict_order_by_keys(affinity_investigators),
-                JSON_PATH + 'aff_inv.json')
+                 JSON_PATH + 'aff_inv.json')
     json_to_file(dict_order_by_keys(affinity_cards),
-                JSON_PATH + 'aff_cards.json')
+                 JSON_PATH + 'aff_cards.json')
     json_to_file(dict_order_by_keys(decks_grouped_by_hash),
-                JSON_PATH + 'decks_grouped_by_hash.json')
-    
+                 JSON_PATH + 'decks_grouped_by_hash.json')
+
     print('\n\n')
     print('Unique decks :    ' + str(len(decks_grouped_by_hash)))
     print('Duplicated decks: ' + str(len(valid_decks) -
-                                    len(decks_grouped_by_hash)))
+                                     len(decks_grouped_by_hash)))
     print('Total decks:      ' + str(len(valid_decks)))
-    
+
     print(f"\nNumber of thread(s) used: {NB_THREAD}")
     print(f"Runtime {format(datetime.now() - start_time)}.")
