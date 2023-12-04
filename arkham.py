@@ -45,6 +45,10 @@ valid_decks = []                # Contain decks (id) found in ArkhamDB
 # FUNCTION DEFINITIONS STARTS HERE
 
 
+#
+# @ToDo: I should find a better way to handle "last existing deck has been
+# reached" on ArkhamDB.
+#
 def arkhamdb_cache(oper, uid):
     """"Call Arkham DB cache"""
     # If it's already in cache...
@@ -94,12 +98,12 @@ def open_url(request, max_retries=3, retry_delay=1):
         # HTTP error, we retry...
         except urllib.error.HTTPError:
             if attempt < max_retries - 1:
-                print(f'Retrying in {retry_delay} seconds...')
+                print(f'HTTP error: Retrying in {retry_delay} seconds...')
                 time.sleep(retry_delay)
         # OS Error, we retry...
         except OSError:
             if attempt < max_retries - 1:
-                print(f'Retrying in {retry_delay} seconds...')
+                print(f'OS error: Retrying in {retry_delay} seconds...')
                 time.sleep(retry_delay)
 
 

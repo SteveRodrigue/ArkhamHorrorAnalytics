@@ -65,7 +65,8 @@ There are very obvious cards and the data is skew around older investigators and
 - Not a lot of features.
 - Sub-optimal Python code.
 - When a deck is deleted, the script always tries to fetch it (Example: deck id 8).
+- Once the script reaches the last known deck on ArkhamDB, it keeps trying. I should find a way to detect we reached the last deck of ArkhamDB.
 
 ## Side Notes
 
-The current version of the script, with everything in cache (not initial run) will take less than 15 minutes.
+The current version of the script, with everything in cache (not initial run) will take less than 15 minutes on my system (Ubuntu on Windows WSL).
