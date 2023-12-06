@@ -10,6 +10,7 @@ import pickle
 import time
 import urllib.request
 import urllib.error
+import os
 
 # Init vars
 # How many threads to run in parallel
@@ -62,29 +63,36 @@ class ArkhamHorrorAnalytics(object):
         if card_cache.get(str(uid)):
             return card_cache.get(str(uid))
         # We try to open the file...
-        try:
-            with open(DB_PATH + oper + '/' + str(uid) + '.json',
-                      encoding="utf-8") as file:
-                json_to_return = json.load(file)
-        # If it's not working...
-        except IOError:
-            # We try to get the info from ArkhamDB
-            with self.open_url(ARKHAM_DB_API + oper + '/'
-                          + str(uid) + '.json') as response:
-                extracted_response = response.read()
-                # We validate if the response is a valid JSON
-                if self.is_json(extracted_response):
-                    json_content = json.loads(extracted_response)
-                    # We save the file for future use
-                    self.json_to_file(json_content,
-                                 DB_PATH + oper + '/' + str(uid) + '.json')
-                    json_to_return = json_content
-                else:
-                    json_to_return = {}
+        filename = DB_PATH + oper + '/' + str(uid) + '.json'
+        if os.path.exists(filename):
+            json_to_return = self.open_json_file(filename)
+        else:
+            url = ARKHAM_DB_API + oper + '/' + str(uid) + '.json'
+            json_to_return = self.open_arkham_db_url(url)
+
         # If the current card isn't in the memory cache, add it...
         if oper == 'card':
             # Load card in cache...
             card_cache.update({str(uid): json_to_return})
+        return json_to_return
+
+    def open_json_file(self, filename):
+        with open(filename, encoding="utf-8") as file:
+            json_to_return = json.load(file)
+        return json_to_return
+
+    def open_arkham_db_url(self, url):
+        with self.open_url(url) as response:
+            extracted_response = response.read()
+            # We validate if the response is a valid JSON
+            if self.is_json(extracted_response):
+                json_content = json.loads(extracted_response)
+                # We save the file for future use
+                self.json_to_file(json_content,
+                                  DB_PATH + oper + '/' + str(uid) + '.json')
+                json_to_return = json_content
+            else:
+                json_to_return = {}
         return json_to_return
 
     def is_json(self, myjson):
