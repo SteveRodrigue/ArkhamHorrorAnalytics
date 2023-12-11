@@ -1,10 +1,10 @@
 
 ==== Investigator "Ashcan" Pete (XP cards) ====
 
-Peter Sylvestre (02035) [266, 39.5%]
-Charisma (02158) [263, 39.1%]
-Scrapper (02193) [228, 33.9%]
-Lucky! (01084) [217, 32.2%]
+Peter Sylvestre (02035) [266, 39.4%]
+Charisma (02158) [263, 39.0%]
+Scrapper (02193) [228, 33.8%]
+Lucky! (01084) [218, 32.3%]
 Flare (02115) [143, 21.2%]
 Will to Survive (01085) [112, 16.6%]
 Stroke of Luck (02271) [62, 9.2%]
