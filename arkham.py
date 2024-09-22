@@ -16,8 +16,8 @@ import urllib.error
 # (Increasing the value don't improve performance much on my system)
 NB_THREAD = 8
 ARKHAM_DB_API = 'https://arkhamdb.com/api/public/'
-LAST_DECK = 50000  # Maximum deck ID to try to fetch from ArkhamDB
-# LAST_DECK = 10  # Use a low value to test the script.
+FIRST_DECK = 1
+LAST_DECK = 51000  # Maximum deck ID to try to fetch from ArkhamDB
 # Location of the root directory of ArkhamDB API cache
 DB_PATH = './db/'
 # Location of the root where to store html/text files
@@ -42,44 +42,11 @@ decks_grouped_by_hash = {}
 card_cache = {}                 # This adds card in memory to reduce file read
 valid_decks = []                # Contain decks (id) found in ArkhamDB
 
+#
 # FUNCTION DEFINITIONS STARTS HERE
-
-
 #
-# @ToDo: I should find a better way to handle "last existing deck has been
-# reached" on ArkhamDB.
+# Generic functions starts here
 #
-def arkhamdb_cache(oper, uid):
-    """"Call Arkham DB cache"""
-    # If it's already in cache...
-    if card_cache.get(str(uid)):
-        return card_cache.get(str(uid))
-    # We try to open the file...
-    try:
-        with open(DB_PATH + oper + '/' + str(uid) + '.json',
-                  encoding="utf-8") as file:
-            json_to_return = json.load(file)
-    # If it's not working...
-    except IOError:
-        # We try to get the info from ArkhamDB
-        with open_url(ARKHAM_DB_API + oper + '/'
-                      + str(uid) + '.json') as response:
-            extracted_response = response.read()
-            # We validate if the response is a valid JSON
-            if is_json(extracted_response):
-                json_content = json.loads(extracted_response)
-                # We save the file for future use
-                json_to_file(json_content,
-                             DB_PATH + oper + '/' + str(uid) + '.json')
-                json_to_return = json_content
-            else:
-                json_to_return = {}
-    # If the current card isn't in the memory cache, add it...
-    if oper == 'card':
-        # Load card in cache...
-        card_cache.update({str(uid): json_to_return})
-    return json_to_return
-
 
 def is_json(myjson):
     """"Check if it's valid JSON"""
@@ -93,6 +60,7 @@ def is_json(myjson):
 def open_url(request, max_retries=3, retry_delay=1):
     """Return URL content with retries"""
     for attempt in range(max_retries):
+        print('Trying (' + str(attempt + 1) + '/' + str(max_retries) + ') : ' + request )
         try:
             return urllib.request.urlopen(request, timeout=5)
         # HTTP error, we retry...
@@ -134,10 +102,72 @@ def dict_order_by_keys(dict_to_order):
     return {key: dict_to_order[key] for key in keys}
 
 
+def return_file_content(filename):
+    """Return the file content of a file"""
+    with open(filename, encoding="utf-8") as file:
+        content = file.read()
+    return content
+
+
+def value_getter(pass_item):
+    """Use to get the value of a key/value pair"""
+    return pass_item[1]
+
+
 def fill_queue(filler_list):
     """Fill the queue with content"""
     for temp_item in filler_list:
         queue.put(temp_item)
+
+
+def check_var_in_dict(dict, key_to_check, text_to_return='N/A'):
+    """Return a dictionary value if it exists, else return a default text (N/A)."""
+    if key_to_check in dict:
+        return dict[key_to_check]
+    else:
+        return text_to_return
+
+#
+# End of generic fonctions
+#
+# Start of ArkhamDB specific functions
+#
+
+#
+# @ToDo: I should find a better way to handle "last existing deck has been
+# reached" on ArkhamDB.
+#
+def arkhamdb_cache(oper, uid):
+    """"Call Arkham DB cache"""
+    # If it's already in cache...
+    if oper == 'card':
+        if card_cache.get(str(uid)):
+            return card_cache.get(str(uid))
+    # We try to open the file...
+    try:
+        with open(DB_PATH + oper + '/' + str(uid) + '.json',
+                  encoding="utf-8") as file:
+            json_to_return = json.load(file)
+    # If it's not working...
+    except IOError:
+        # We try to get the info from ArkhamDB
+        with open_url(ARKHAM_DB_API + oper + '/'
+                      + str(uid) + '.json') as response:
+            extracted_response = response.read()
+            # We validate if the response is a valid JSON
+            if is_json(extracted_response):
+                json_content = json.loads(extracted_response)
+                # We save the file for future use
+                json_to_file(json_content,
+                             DB_PATH + oper + '/' + str(uid) + '.json')
+                json_to_return = json_content
+            else:
+                json_to_return = {}
+    # If the current card isn't in the memory cache, add it...
+    if oper == 'card':
+        # Load card in cache...
+        card_cache.update({str(uid): json_to_return})
+    return json_to_return
 
 
 def deck_deduplicate(slots):
@@ -199,7 +229,7 @@ def worker():
         # Open/clost the deck file
         content = arkhamdb_cache('decklist', deck_id)
         if len(content):
-            print('Deck being parsed: ' + str(deck_id))
+            print('Deck being parsed: ' + str(deck_id) + ' (' + content['investigator_name'] + ')')
             valid_decks = valid_decks + [deck_id]
             content['slots'] = filter_out_cards(content['slots'])
             # Check if the deck contains duplicate
@@ -247,17 +277,9 @@ def worker():
                     process_xp_deck(content)
 
 
-def return_file_content(filename):
-    """Return the file content of a file"""
-    with open(filename, encoding="utf-8") as file:
-        content = file.read()
-    return content
-
-
-def value_getter(pass_item):
-    """Use to get the value of a key/value pair"""
-    return pass_item[1]
-
+#
+# " + card_cache[inv]['back_flavor'] + "<br />\n \
+#
 
 def worker_inv_aff():
     """Worker for affinities"""
@@ -281,7 +303,7 @@ def worker_inv_aff():
 <meta name=\"keywords\" content=\"arkham horror card game\">\n \
 </head>\n \
 <body>\n \
-" + card_cache[inv]['back_flavor'] + "<br />\n \
+" + check_var_in_dict(card_cache[inv], 'back_flavor') + "<br />\n \
 <img src=\"https://arkhamdb.com/bundles/cards/" \
 + card_cache[inv]['code'] + ".png\" /><br />\n"
         max_value = 0  # We set the max value to zero
@@ -312,6 +334,11 @@ def worker_inv_aff():
                       card_cache[inv]['name'].replace(" ", "_") + '.html')
 
 
+#
+# Removed because of blbe pack that miss this value.
+# Should be re
+# " + card_cache[inv]['back_flavor'] + "<br />\n \
+
 def worker_inv_aff_xp():
     """Worker for affinities"""
     while not queue_inv_aff.empty():
@@ -334,7 +361,7 @@ def worker_inv_aff_xp():
 <meta name=\"keywords\" content=\"arkham horror card game\">\n \
 </head>\n \
 <body>\n \
-" + card_cache[inv]['back_flavor'] + "<br />\n \
+" + check_var_in_dict(card_cache[inv], 'back_flavor') + "<br />\n \
 <img src=\"https://arkhamdb.com/bundles/cards/" \
 + card_cache[inv]['code'] + ".png\" /><br />\n"
         max_value = 0  # We set the max value to zero
@@ -365,7 +392,7 @@ def worker_inv_aff_xp():
 
 def process_base_deck(deck_data):
     """Process a deck"""
-    if not deck_data['investigator_code'] in affinity_investigators:
+    if deck_data['investigator_code'] not in affinity_investigators:
         inv_affinity = {}
     else:
         inv_affinity = affinity_investigators[deck_data['investigator_code']]
@@ -403,7 +430,7 @@ def process_base_deck(deck_data):
 
 def process_xp_deck(deck_data):
     """Process a deck"""
-    if not deck_data['investigator_code'] in affinity_investigators_xp:
+    if deck_data['investigator_code'] not in affinity_investigators_xp:
         inv_affinity = {}
     else:
         inv_affinity = \
@@ -440,6 +467,11 @@ def process_xp_deck(deck_data):
         {deck_data['investigator_code']: dict_order_by_keys(inv_affinity)})
 
 
+#
+# Main!
+#
+
+
 if __name__ == "__main__":
     #
     # Code begins here...
@@ -452,7 +484,8 @@ if __name__ == "__main__":
     # @todo: Dynamically build it?
     duplicates = file_to_json(DB_PATH + 'other/duplicates.json')
 
-    list_of_deck = list(range(1, LAST_DECK))
+    # @todo: The last deck shouldn't be a fixed value.
+    list_of_deck = list(range(FIRST_DECK, LAST_DECK))
 
     # Fill the queue with the deck list
     fill_queue(list_of_deck)
