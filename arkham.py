@@ -10,6 +10,7 @@ import pickle
 import time
 import urllib.request
 import urllib.error
+from unidecode import unidecode
 
 # Init vars
 # How many threads to run in parallel
@@ -17,7 +18,7 @@ import urllib.error
 NB_THREAD = 8
 ARKHAM_DB_API = 'https://arkhamdb.com/api/public/'
 FIRST_DECK = 1
-LAST_DECK = 51000  # Maximum deck ID to try to fetch from ArkhamDB
+LAST_DECK = 55000  # Maximum deck ID to try to fetch from ArkhamDB
 # Location of the root directory of ArkhamDB API cache
 DB_PATH = './db/'
 # Location of the root where to store html/text files
@@ -277,10 +278,6 @@ def worker():
                     process_xp_deck(content)
 
 
-#
-# " + card_cache[inv]['back_flavor'] + "<br />\n \
-#
-
 def worker_inv_aff():
     """Worker for affinities"""
     while not queue_inv_aff.empty():
@@ -328,16 +325,11 @@ def worker_inv_aff():
                     + str(code) + ') [' + str(value) + ', ' + \
                     str(round(value*100/max_value, 1)) + '%]\n'
         print(txt_output)
-        write_to_file(txt_output, TEXT_PATH + 'inv_aff_' +
-                      card_cache[inv]['name'].replace(" ", "_") + '.txt')
-        write_to_file(html_output, HTML_PATH + 'inv_aff_' +
-                      card_cache[inv]['name'].replace(" ", "_") + '.html')
+        write_to_file(txt_output, TEXT_PATH + unidecode('inv_aff_' +
+                      card_cache[inv]['name'].replace(" ", "_") + '.txt'))
+        write_to_file(html_output, HTML_PATH + unidecode('inv_aff_' +
+                      card_cache[inv]['name'].replace(" ", "_") + '.html'))
 
-
-#
-# Removed because of blbe pack that miss this value.
-# Should be re
-# " + card_cache[inv]['back_flavor'] + "<br />\n \
 
 def worker_inv_aff_xp():
     """Worker for affinities"""
@@ -384,10 +376,10 @@ def worker_inv_aff_xp():
                             + ' (' + str(code) + ') [' + str(value) + ', ' \
                             + str(round(value*100/max_value, 1)) + '%]\n'
         print(txt_output)
-        write_to_file(txt_output, TEXT_PATH + 'inv_aff_' +
-                      card_cache[inv]['name'].replace(" ", "_") + '_xp.txt')
-        write_to_file(html_output, HTML_PATH + 'inv_aff_' +
-                      card_cache[inv]['name'].replace(" ", "_") + '_xp.html')
+        write_to_file(txt_output, TEXT_PATH + unidecode('inv_aff_' +
+                      card_cache[inv]['name'].replace(" ", "_") + '_xp.txt'))
+        write_to_file(html_output, HTML_PATH + unidecode('inv_aff_' +
+                      card_cache[inv]['name'].replace(" ", "_") + '_xp.html'))
 
 
 def process_base_deck(deck_data):
