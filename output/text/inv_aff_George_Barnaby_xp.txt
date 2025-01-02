@@ -1,0 +1,6 @@
+
+==== Investigator George Barnaby (XP cards) ====
+
+Cornered (04160) [1, 100.0%]
+Brute Force (06166) [1, 100.0%]
+Sharp Vision (06204) [1, 100.0%]
