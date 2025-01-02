@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
 """Modules required"""
+
 from datetime import datetime
 import json
+import re
 import threading
 from queue import Queue
 import hashlib
@@ -16,32 +18,34 @@ from unidecode import unidecode
 # How many threads to run in parallel
 # (Increasing the value don't improve performance much on my system)
 NB_THREAD = 8
-ARKHAM_DB_API = 'https://arkhamdb.com/api/public/'
+ARKHAM_DB_API = "https://arkhamdb.com/api/public/"
 FIRST_DECK = 1
+# LAST_DECK = 100  # Used for debugging/development
 LAST_DECK = 55000  # Maximum deck ID to try to fetch from ArkhamDB
 # Location of the root directory of ArkhamDB API cache
-DB_PATH = './db/'
+DB_PATH = "./db/"
 # Location of the root where to store html/text files
-OUTPUT_PATH = './output/'
-HTML_PATH = OUTPUT_PATH + 'html/'
-TEXT_PATH = OUTPUT_PATH + 'text/'
-JSON_PATH = OUTPUT_PATH + 'json/'
+OUTPUT_PATH = "./output/"
+HTML_PATH = OUTPUT_PATH + "html/"
+TEXT_PATH = OUTPUT_PATH + "text/"
+JSON_PATH = OUTPUT_PATH + "json/"
 # To be relevant, a card must be present in at least 10% of the decks.
 # This can skew data for newer cards/expansions.
 # If this value is set to 0, all cards will be shown.
 RELEVANCE = 0.10
-queue = Queue()                 # Init the empty queue
-queue_inv_aff = Queue()         # Init an empty queue for affinities
-thread_list = []                # Empty thread list
-thread_aff_list = []            # Empty thread list
-thread_aff_list_xp = []         # Empty thread list
-affinity_investigators = {}     # Inv. Base card affinity
+queue = Queue()  # Init the empty queue
+queue_inv_aff = Queue()  # Init an empty queue for affinities
+thread_list = []  # Empty thread list
+thread_aff_list = []  # Empty thread list
+thread_aff_list_xp = []  # Empty thread list
+affinity_investigators = {}  # Inv. Base card affinity
 affinity_investigators_xp = {}  # Inv. XP card affinity
-affinity_cards = {}             # Card to card affinity
+affinity_cards = {}  # Card to card affinity
 # Hashing is used to deduplicate decks
 decks_grouped_by_hash = {}
-card_cache = {}                 # This adds card in memory to reduce file read
-valid_decks = []                # Contain decks (id) found in ArkhamDB
+card_cache = {}  # This adds card in memory to reduce file read
+valid_decks = []  # Contain decks (id) found in ArkhamDB
+fname_txt_replacements = [(r" ", "_"), (r"\"", ""), (r"'", "_")]
 
 #
 # FUNCTION DEFINITIONS STARTS HERE
@@ -49,8 +53,9 @@ valid_decks = []                # Contain decks (id) found in ArkhamDB
 # Generic functions starts here
 #
 
+
 def is_json(myjson):
-    """"Check if it's valid JSON"""
+    """ "Check if it's valid JSON"""
     try:
         json.loads(myjson)
     except ValueError:
@@ -61,18 +66,18 @@ def is_json(myjson):
 def open_url(request, max_retries=3, retry_delay=1):
     """Return URL content with retries"""
     for attempt in range(max_retries):
-        print('Trying (' + str(attempt + 1) + '/' + str(max_retries) + ') : ' + request )
+        print("Trying (" + str(attempt + 1) + "/" + str(max_retries) + ") : " + request)
         try:
             return urllib.request.urlopen(request, timeout=5)
         # HTTP error, we retry...
         except urllib.error.HTTPError:
             if attempt < max_retries - 1:
-                print(f'HTTP error: Retrying in {retry_delay} seconds...')
+                print(f"HTTP error: Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
         # OS Error, we retry...
         except OSError:
             if attempt < max_retries - 1:
-                print(f'OS error: Retrying in {retry_delay} seconds...')
+                print(f"OS error: Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
 
 
@@ -87,7 +92,7 @@ def file_to_json(file_name):
 
 def write_to_file(content, filename):
     """Write (any) content to file"""
-    with open(filename, 'w', encoding="utf-8") as file:
+    with open(filename, "w", encoding="utf-8") as file:
         file.write(content)
 
 
@@ -121,12 +126,13 @@ def fill_queue(filler_list):
         queue.put(temp_item)
 
 
-def check_var_in_dict(dict, key_to_check, text_to_return='N/A'):
+def check_var_in_dict(dict, key_to_check, text_to_return="N/A"):
     """Return a dictionary value if it exists, else return a default text (N/A)."""
     if key_to_check in dict:
         return dict[key_to_check]
     else:
         return text_to_return
+
 
 #
 # End of generic fonctions
@@ -134,38 +140,36 @@ def check_var_in_dict(dict, key_to_check, text_to_return='N/A'):
 # Start of ArkhamDB specific functions
 #
 
+
 #
 # @ToDo: I should find a better way to handle "last existing deck has been
 # reached" on ArkhamDB.
 #
 def arkhamdb_cache(oper, uid):
-    """"Call Arkham DB cache"""
+    """ "Call Arkham DB cache"""
     # If it's already in cache...
-    if oper == 'card':
+    if oper == "card":
         if card_cache.get(str(uid)):
             return card_cache.get(str(uid))
     # We try to open the file...
     try:
-        with open(DB_PATH + oper + '/' + str(uid) + '.json',
-                  encoding="utf-8") as file:
+        with open(DB_PATH + oper + "/" + str(uid) + ".json", encoding="utf-8") as file:
             json_to_return = json.load(file)
     # If it's not working...
     except IOError:
         # We try to get the info from ArkhamDB
-        with open_url(ARKHAM_DB_API + oper + '/'
-                      + str(uid) + '.json') as response:
+        with open_url(ARKHAM_DB_API + oper + "/" + str(uid) + ".json") as response:
             extracted_response = response.read()
             # We validate if the response is a valid JSON
             if is_json(extracted_response):
                 json_content = json.loads(extracted_response)
                 # We save the file for future use
-                json_to_file(json_content,
-                             DB_PATH + oper + '/' + str(uid) + '.json')
+                json_to_file(json_content, DB_PATH + oper + "/" + str(uid) + ".json")
                 json_to_return = json_content
             else:
                 json_to_return = {}
     # If the current card isn't in the memory cache, add it...
-    if oper == 'card':
+    if oper == "card":
         # Load card in cache...
         card_cache.update({str(uid): json_to_return})
     return json_to_return
@@ -199,7 +203,7 @@ def filter_out_cards(slots):
         if slot == "01000":  # Random basic weakness
             reject = True
         # Reject Encounter cards
-        if arkhamdb_cache('card', slot).get('encounter_code'):
+        if arkhamdb_cache("card", slot).get("encounter_code"):
             reject = True
         # Card wasn't rejected...
         if not reject:
@@ -208,13 +212,13 @@ def filter_out_cards(slots):
 
 
 def deck_level(deck_data):
-    '''Return the XP spent in this deck'''
+    """Return the XP spent in this deck"""
     total_xp = 0
-    for slot in deck_data['slots']:
+    for slot in deck_data["slots"]:
         try:
-            total_xp = total_xp + \
-                       (int(arkhamdb_cache('card', slot).get('xp')) *
-                        deck_data['slots'][slot])
+            total_xp = total_xp + (
+                int(arkhamdb_cache("card", slot).get("xp")) * deck_data["slots"][slot]
+            )
         except TypeError:
             pass
     return total_xp
@@ -228,16 +232,22 @@ def worker():
     while not queue.empty():
         deck_id = queue.get()
         # Open/clost the deck file
-        content = arkhamdb_cache('decklist', deck_id)
+        content = arkhamdb_cache("decklist", deck_id)
         if len(content):
-            print('Deck being parsed: ' + str(deck_id) + ' (' + content['investigator_name'] + ')')
+            print(
+                "Deck being parsed: "
+                + str(deck_id)
+                + " ("
+                + content["investigator_name"]
+                + ")"
+            )
             valid_decks = valid_decks + [deck_id]
-            content['slots'] = filter_out_cards(content['slots'])
+            content["slots"] = filter_out_cards(content["slots"])
             # Check if the deck contains duplicate
             # Replace duplicated cards in deck
-            dedup_slots = deck_deduplicate(content['slots'])
+            dedup_slots = deck_deduplicate(content["slots"])
             # Make sure the OG deck is in asc order
-            deck_slots = dict_order_by_keys(content['slots'])
+            deck_slots = dict_order_by_keys(content["slots"])
             # Compute md5 hashes
             dedup_hash = hashlib.md5(pickle.dumps(dedup_slots)).hexdigest()
             deck_hash = hashlib.md5(pickle.dumps(deck_slots)).hexdigest()
@@ -245,31 +255,38 @@ def worker():
             if dedup_hash != deck_hash:
                 # Display a message when cards we replaced in a deck
                 # after depulication
-                print('Cards in deck ' + str(deck_id).zfill(5) +
-                      ' were replaced by their original card ID.')
+                print(
+                    "Cards in deck "
+                    + str(deck_id).zfill(5)
+                    + " were replaced by their original card ID."
+                )
                 deck_hash = dedup_hash
-                content['slots'] = dedup_slots
+                content["slots"] = dedup_slots
             # Delete variables that won't be used anymore
             del dedup_hash
             del dedup_slots
             # The same deck exists...
             if deck_hash in decks_grouped_by_hash:
                 # Diplay a message with duplicated deck IDs
-                print('Deck ' + str(content['id']) + ' is identical to: ' +
-                      str(decks_grouped_by_hash[deck_hash]))
+                print(
+                    "Deck "
+                    + str(content["id"])
+                    + " is identical to: "
+                    + str(decks_grouped_by_hash[deck_hash])
+                )
                 # Build data for duplicated decks...
                 # Simple list of deck duplicate of
                 # Group duplicated decks together
                 if decks_grouped_by_hash.get(deck_hash):
-                    decks_grouped_by_hash[deck_hash] = \
-                        sorted(decks_grouped_by_hash[deck_hash] +
-                               [content['id']])
+                    decks_grouped_by_hash[deck_hash] = sorted(
+                        decks_grouped_by_hash[deck_hash] + [content["id"]]
+                    )
                 else:
-                    decks_grouped_by_hash[deck_hash] = [content['id']]
+                    decks_grouped_by_hash[deck_hash] = [content["id"]]
             else:
                 # @todo verify if the deck is legit
                 # !!! Example: 27554 is illegal!
-                decks_grouped_by_hash[deck_hash] = [content['id']]
+                decks_grouped_by_hash[deck_hash] = [content["id"]]
                 # Process starter decks...
                 if deck_level(content) == 0:
                     process_base_deck(content)
@@ -286,49 +303,102 @@ def worker_inv_aff():
         current_aff = affinity_investigators[inv]
         reorg = sorted(current_aff.items(), key=value_getter, reverse=True)
         # Get current investigator information
-        arkhamdb_cache('card', inv)
+        arkhamdb_cache("card", inv)
         # Create the header of the file
-        txt_output = '\n==== Investigator ' + card_cache[inv]['name'] \
-            + ' ====\n\n'
-        html_output = " \
+        txt_output = "\n==== Investigator " + card_cache[inv]["name"] + " ====\n\n"
+        html_output = (
+            " \
 <!doctype html>\n \
 <html>\n \
 <head>\n \
-<title>" + card_cache[inv]['name'] + "</title>\n \
-<meta name=\"description\" content=\"Investigator " \
-+ card_cache[inv]['name'] + " card affinity\">\n \
-<meta name=\"keywords\" content=\"arkham horror card game\">\n \
+<title>"
+            + card_cache[inv]["name"]
+            + '</title>\n \
+<meta name="description" content="Investigator '
+            + card_cache[inv]["name"]
+            + ' card affinity">\n \
+<meta name="keywords" content="arkham horror card game">\n \
 </head>\n \
 <body>\n \
-" + check_var_in_dict(card_cache[inv], 'back_flavor') + "<br />\n \
-<img src=\"https://arkhamdb.com/bundles/cards/" \
-+ card_cache[inv]['code'] + ".png\" /><br />\n"
+'
+            + check_var_in_dict(card_cache[inv], "back_flavor")
+            + '<br />\n \
+<img src="https://arkhamdb.com/bundles/cards/'
+            + card_cache[inv]["code"]
+            + '.png" /><br />\n'
+        )
         max_value = 0  # We set the max value to zero
         for code, value in reorg:
             # Increment max value if necessary...
             if value > max_value:
                 max_value = value
-                html_output = html_output + "Stats based on " + \
-                    str(max_value) + " decks<br />\n"
+                html_output = (
+                    html_output + "Stats based on " + str(max_value) + " decks<br />\n"
+                )
             # Only keep the cards that are used in more than 10% of the decks
             if value > (max_value * RELEVANCE):
-                html_output = html_output + \
-                    "<img " + "src=\"https://arkhamdb.com/bundles/cards/" \
-                    + str(code) + ".png\" />\n"
+                html_output = (
+                    html_output
+                    + "<img "
+                    + 'src="https://arkhamdb.com/bundles/cards/'
+                    + str(code)
+                    + '.png" />\n'
+                )
                 # Without card ID
                 # txt_output = txt_output + card_cache[code]['name'] + ' [' + \
                 #     str(value) + ', ' + str(round(value*100/max_value, 1)) \
                 #     + '%]\n'
                 # With card ID
-                txt_output = txt_output + \
-                    arkhamdb_cache('card', code).get('name') + ' (' \
-                    + str(code) + ') [' + str(value) + ', ' + \
-                    str(round(value*100/max_value, 1)) + '%]\n'
+                txt_output = (
+                    txt_output
+                    + arkhamdb_cache("card", code).get("name")
+                    + " ("
+                    + str(code)
+                    + ") ["
+                    + str(value)
+                    + ", "
+                    + str(round(value * 100 / max_value, 1))
+                    + "%]\n"
+                )
         print(txt_output)
-        write_to_file(txt_output, TEXT_PATH + unidecode('inv_aff_' +
-                      card_cache[inv]['name'].replace(" ", "_") + '.txt'))
-        write_to_file(html_output, HTML_PATH + unidecode('inv_aff_' +
-                      card_cache[inv]['name'].replace(" ", "_") + '.html'))
+        write_to_file(
+            txt_output,
+            TEXT_PATH
+            + unidecode(
+                "inv_aff_"
+                + replace_text(card_cache[inv]["name"], fname_txt_replacements)
+                + ".txt"
+            ),
+        )
+        write_to_file(
+            html_output,
+            HTML_PATH
+            + unidecode(
+                "inv_aff_"
+                + replace_text(card_cache[inv]["name"], fname_txt_replacements)
+                + ".html"
+            ),
+        )
+        # write_to_file(txt_output, TEXT_PATH + unidecode('inv_aff_' +
+        #               card_cache[inv]['name'].replace(" ", "_") + '.txt'))
+        # write_to_file(html_output, HTML_PATH + unidecode('inv_aff_' +
+        #               card_cache[inv]['name'].replace(" ", "_") + '.html'))
+
+
+def replace_text(text, replacements):
+    """
+    Replace text based on a list of replacement pairs.
+
+    Args:
+      text: Original text.
+      replacement: List of tuples, each tuple contains a regex pattern and its replacement.
+
+    Returns:
+      The modified text.
+    """
+    for pattern, replacement in replacements:
+        text = re.sub(pattern, replacement, text)
+    return text
 
 
 def worker_inv_aff_xp():
@@ -339,57 +409,97 @@ def worker_inv_aff_xp():
         current_aff = affinity_investigators_xp[inv]
         reorg = sorted(current_aff.items(), key=value_getter, reverse=True)
         # Get current investigator information
-        arkhamdb_cache('card', inv)
+        arkhamdb_cache("card", inv)
         # Create the header of the file
-        txt_output = '\n==== Investigator ' + card_cache[inv]['name'] \
-            + ' (XP cards) ====\n\n'
-        html_output = " \
+        txt_output = (
+            "\n==== Investigator " + card_cache[inv]["name"] + " (XP cards) ====\n\n"
+        )
+        html_output = (
+            " \
 <!doctype html>\n \
 <html>\n \
 <head>\n \
-<title>" + card_cache[inv]['name'] + "</title>\n \
-<meta name=\"description\" content=\"Investigator " \
-+ card_cache[inv]['name'] + " XP card affinity\">\n \
-<meta name=\"keywords\" content=\"arkham horror card game\">\n \
+<title>"
+            + card_cache[inv]["name"]
+            + '</title>\n \
+<meta name="description" content="Investigator '
+            + card_cache[inv]["name"]
+            + ' XP card affinity">\n \
+<meta name="keywords" content="arkham horror card game">\n \
 </head>\n \
 <body>\n \
-" + check_var_in_dict(card_cache[inv], 'back_flavor') + "<br />\n \
-<img src=\"https://arkhamdb.com/bundles/cards/" \
-+ card_cache[inv]['code'] + ".png\" /><br />\n"
+'
+            + check_var_in_dict(card_cache[inv], "back_flavor")
+            + '<br />\n \
+<img src="https://arkhamdb.com/bundles/cards/'
+            + card_cache[inv]["code"]
+            + '.png" /><br />\n'
+        )
         max_value = 0  # We set the max value to zero
         for code, value in reorg:
             # Increment max value if necessary...
             if value > max_value:
                 max_value = value
-                html_output = html_output + "Stats based on " + \
-                    str(max_value) + " decks<br />\n"
+                html_output = (
+                    html_output + "Stats based on " + str(max_value) + " decks<br />\n"
+                )
             # Only keep the cards that are used in more than 10% of the decks
-            if 'xp' in card_cache[code].keys():
-                if card_cache[code]['xp'] > 0:
+            if "xp" in card_cache[code].keys():
+                if card_cache[code]["xp"] > 0:
                     if value > (max_value * RELEVANCE / 2):
-                        html_output = html_output + \
-                            "<img " + "src=\"https://arkhamdb.com/" \
-                            + "bundles/cards/" + str(code) + ".png\" />\n"
+                        html_output = (
+                            html_output
+                            + "<img "
+                            + 'src="https://arkhamdb.com/'
+                            + "bundles/cards/"
+                            + str(code)
+                            + '.png" />\n'
+                        )
                         # Display With the ArkhamDB card ID
-                        txt_output = txt_output + \
-                            arkhamdb_cache('card', code).get('name') \
-                            + ' (' + str(code) + ') [' + str(value) + ', ' \
-                            + str(round(value*100/max_value, 1)) + '%]\n'
+                        txt_output = (
+                            txt_output
+                            + arkhamdb_cache("card", code).get("name")
+                            + " ("
+                            + str(code)
+                            + ") ["
+                            + str(value)
+                            + ", "
+                            + str(round(value * 100 / max_value, 1))
+                            + "%]\n"
+                        )
         print(txt_output)
-        write_to_file(txt_output, TEXT_PATH + unidecode('inv_aff_' +
-                      card_cache[inv]['name'].replace(" ", "_") + '_xp.txt'))
-        write_to_file(html_output, HTML_PATH + unidecode('inv_aff_' +
-                      card_cache[inv]['name'].replace(" ", "_") + '_xp.html'))
+        write_to_file(
+            txt_output,
+            TEXT_PATH
+            + unidecode(
+                "inv_aff_"
+                + replace_text(card_cache[inv]["name"], fname_txt_replacements)
+                + "_xp.txt"
+            ),
+        )
+        write_to_file(
+            html_output,
+            HTML_PATH
+            + unidecode(
+                "inv_aff_"
+                + replace_text(card_cache[inv]["name"], fname_txt_replacements)
+                + "_xp.html"
+            ),
+        )
+        # write_to_file(txt_output, TEXT_PATH + unidecode('inv_aff_' +
+        #               card_cache[inv]['name'].replace(" ", "_") + '_xp.txt'))
+        # write_to_file(html_output, HTML_PATH + unidecode('inv_aff_' +
+        #               card_cache[inv]['name'].replace(" ", "_") + '_xp.html'))
 
 
 def process_base_deck(deck_data):
     """Process a deck"""
-    if deck_data['investigator_code'] not in affinity_investigators:
+    if deck_data["investigator_code"] not in affinity_investigators:
         inv_affinity = {}
     else:
-        inv_affinity = affinity_investigators[deck_data['investigator_code']]
+        inv_affinity = affinity_investigators[deck_data["investigator_code"]]
     # Increase investigator affinity value...
-    for slot in deck_data['slots']:
+    for slot in deck_data["slots"]:
         # Increase the value for the current investigator
         if inv_affinity.get(slot):
             new_inv_value = inv_affinity[slot] + 1
@@ -397,7 +507,7 @@ def process_base_deck(deck_data):
             new_inv_value = 1
         inv_affinity.update({slot: new_inv_value})
         # Process each slot indidually...
-        for other_slot in deck_data['slots']:
+        for other_slot in deck_data["slots"]:
             # We exclude own...
             if other_slot != slot:
                 # We check if affinities already exists for this card...
@@ -417,18 +527,18 @@ def process_base_deck(deck_data):
     # Processing _after_ all slots were parse
     # Put the investigator value back in the dict...
     affinity_investigators.update(
-        {deck_data['investigator_code']: dict_order_by_keys(inv_affinity)})
+        {deck_data["investigator_code"]: dict_order_by_keys(inv_affinity)}
+    )
 
 
 def process_xp_deck(deck_data):
     """Process a deck"""
-    if deck_data['investigator_code'] not in affinity_investigators_xp:
+    if deck_data["investigator_code"] not in affinity_investigators_xp:
         inv_affinity = {}
     else:
-        inv_affinity = \
-            affinity_investigators_xp[deck_data['investigator_code']]
+        inv_affinity = affinity_investigators_xp[deck_data["investigator_code"]]
     # Increase investigator affinity value...
-    for slot in deck_data['slots']:
+    for slot in deck_data["slots"]:
         # Increase the value for the current investigator
         if inv_affinity.get(slot):
             new_inv_value = inv_affinity[slot] + 1
@@ -436,7 +546,7 @@ def process_xp_deck(deck_data):
             new_inv_value = 1
         inv_affinity.update({slot: new_inv_value})
         # Process each slot indidually...
-        for other_slot in deck_data['slots']:
+        for other_slot in deck_data["slots"]:
             # We exclude own...
             if other_slot != slot:
                 # We check if affinities already exists for this card...
@@ -456,7 +566,8 @@ def process_xp_deck(deck_data):
     # Processing _after_ all slots were parse
     # Put the investigator value back in the dict...
     affinity_investigators_xp.update(
-        {deck_data['investigator_code']: dict_order_by_keys(inv_affinity)})
+        {deck_data["investigator_code"]: dict_order_by_keys(inv_affinity)}
+    )
 
 
 #
@@ -470,11 +581,11 @@ if __name__ == "__main__":
     #
     # Start time for statistics only
     start_time = datetime.now()
-    print('Arkham Horror Analytics')
+    print("Arkham Horror Analytics")
 
     # Load duplicate cards list
     # @todo: Dynamically build it?
-    duplicates = file_to_json(DB_PATH + 'other/duplicates.json')
+    duplicates = file_to_json(DB_PATH + "other/duplicates.json")
 
     # @todo: The last deck shouldn't be a fixed value.
     list_of_deck = list(range(FIRST_DECK, LAST_DECK))
@@ -540,18 +651,17 @@ if __name__ == "__main__":
     # Post processing...
     #
 
-    json_to_file(dict_order_by_keys(affinity_investigators),
-                 JSON_PATH + 'aff_inv.json')
-    json_to_file(dict_order_by_keys(affinity_cards),
-                 JSON_PATH + 'aff_cards.json')
-    json_to_file(dict_order_by_keys(decks_grouped_by_hash),
-                 JSON_PATH + 'decks_grouped_by_hash.json')
+    json_to_file(dict_order_by_keys(affinity_investigators), JSON_PATH + "aff_inv.json")
+    json_to_file(dict_order_by_keys(affinity_cards), JSON_PATH + "aff_cards.json")
+    json_to_file(
+        dict_order_by_keys(decks_grouped_by_hash),
+        JSON_PATH + "decks_grouped_by_hash.json",
+    )
 
-    print('\n\n')
-    print('Unique decks :    ' + str(len(decks_grouped_by_hash)))
-    print('Duplicated decks: ' + str(len(valid_decks) -
-                                     len(decks_grouped_by_hash)))
-    print('Total decks:      ' + str(len(valid_decks)))
+    print("\n\n")
+    print("Unique decks :    " + str(len(decks_grouped_by_hash)))
+    print("Duplicated decks: " + str(len(valid_decks) - len(decks_grouped_by_hash)))
+    print("Total decks:      " + str(len(valid_decks)))
 
     print(f"\nNumber of thread(s) used: {NB_THREAD}")
     print(f"Runtime {format(datetime.now() - start_time)}.")
