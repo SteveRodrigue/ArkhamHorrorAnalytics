@@ -1,3 +1,4 @@
-old/
 db/card/*.json
 db/decklist/*.json
+old/
+.vscode/
